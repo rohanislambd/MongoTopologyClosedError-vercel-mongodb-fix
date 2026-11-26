@@ -287,6 +287,38 @@ export const config = {
 
 ---
 
+### ধাপ ৪: Server Component / Server Action-এ `try/catch` দিয়ে সেশন নেওয়া
+
+Server Component বা Server Action-এ `auth.api.getSession()` কল করার সময় অবশ্যই `try/catch` ব্যবহার করুন। এতে কোনো কারণে ডাটাবেজ কানেকশন বা সেশন রিডে সাময়িক সমস্যা হলেও পুরো পেজ ক্র্যাশ (500 Error) না করে নিরাপদভাবে `null` রিটার্ন করবে।
+
+```ts
+// src/lib/session.ts (অথবা সরাসরি Server Component-এ)
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+
+export async function getServerSession() {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    return session;
+  } catch (error) {
+    console.error("Failed to get server session:", error);
+    return null;
+  }
+}
+```
+
+> **ব্যবহার (Server Component-এ):**
+> ```ts
+> const session = await getServerSession();
+> if (!session?.user) {
+>   redirect("/sign-in");
+> }
+> ```
+
+---
+
 ## ৬. এনভায়রনমেন্ট ভেরিয়েবল ও MongoDB Atlas সেটআপ
 
 ### `.env.local` ফাইল তৈরি করুন
@@ -314,4 +346,5 @@ BETTER_AUTH_URL="http://localhost:3000"
 - [ ] **MongoDB Atlas Network Access:** `0.0.0.0/0` স্ট্যাটাস **Active** আছে কি না।
 - [ ] **Vercel Environment Variables:** Vercel ড্যাশবোর্ডে `MONGODB_URI`, `BETTER_AUTH_SECRET` এবং প্রোডাকশন ডোমেইন অনুযায়ী `BETTER_AUTH_URL` (যেমন `https://your-app.vercel.app`) সঠিকভাবে সেট করা আছে কি না।
 - [ ] **`proxy.ts`-এ `getSessionCookie` এড়িয়ে চলা:** `getSessionCookie` শুধু কুকি আছে কি না দেখে—সেশন এক্সপায়ার্ড কি না দেখে না। তাই `/sign-in` ব্লক হওয়া এড়াতে `/api/auth/get-session` ফেচ ব্যবহার করুন।
+- [ ] **Server-side সেশনে `try/catch`:** Server Component বা Server Action-এ `auth.api.getSession()` কল করার সময় `try/catch` ব্যবহার করুন, যাতে সাময়িক DB এররে পুরো পেজ ক্র্যাশ না হয়।
 - [ ] **Client Component-এ `router.refresh()`:** Optimistic UI (যেমন টগল/এডিট মোডাল) ব্যবহার করলে অপ্রয়োজনীয় `router.refresh()` দেবেন না, নইলে প্রতিবার `proxy.ts` ট্রিগার হয়ে অযাচিত রিডাইরেক্ট হতে পারে।
